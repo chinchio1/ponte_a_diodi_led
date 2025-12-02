@@ -1,154 +1,46 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Carica e guarda il tuo video</title>
+  <meta charset="UTF-8">
+  <title>Il mio sito video</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    :root { color-scheme: light dark; }
-    body { font-family: system-ui, sans-serif; margin: 2rem; line-height: 1.5; }
-    .container { max-width: 800px; margin: 0 auto; }
-    .uploader {
-      border: 2px dashed #888; border-radius: 12px; padding: 1.5rem;
-      display: grid; gap: .75rem; justify-items: center; text-align: center;
+    body {
+      font-family: system-ui, sans-serif;
+      margin: 2rem;
+      text-align: center;
+      background: #f5f5f5;
     }
-    .uploader.drag { border-color: #2a7; background: #2a71; }
-    input[type="file"] { display: none; }
-    .btn { cursor: pointer; padding: .6rem 1rem; border-radius: 8px; border: 1px solid #555; background: #eee; }
-    .meta { font-size: .9rem; color: #555; }
-    video { width: 100%; max-height: 70vh; background: #000; border-radius: 12px; }
-    .row { display: flex; gap: .75rem; flex-wrap: wrap; align-items: center; }
+    h1 {
+      margin-bottom: 1.5rem;
+    }
+    video {
+      width: 80%;
+      max-width: 900px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      background: #000;
+    }
+    footer {
+      margin-top: 2rem;
+      font-size: 0.9rem;
+      color: #555;
+    }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Carica e guarda il tuo video</h1>
+  <h1>Guarda il mio video</h1>
 
-    <div id="dropzone" class="uploader" aria-label="Area di caricamento">
-      <p>Trascina qui un file video oppure</p>
-      <label class="btn" for="fileInput">Scegli un file</label>
-      <input id="fileInput" type="file" accept="video/*" />
-      <p class="meta">Formati comuni: MP4 (H.264/AAC), WebM, Ogg. Il file non viene caricato online: resta nel tuo browser.</p>
-    </div>
+  <!-- Player video -->
+  <video controls autoplay>
+    <source src="video.mp4" type="video/mp4">
+    <source src="video.webm" type="video/webm">
+    <source src="video.ogv" type="video/ogg">
+    Il tuo browser non supporta il tag video.
+  </video>
 
-    <div class="row">
-      <button id="clearBtn" class="btn" disabled>Rimuovi video</button>
-      <button id="downloadBtn" class="btn" disabled>Scarica file</button>
-    </div>
-
-    <div id="info" class="meta" aria-live="polite"></div>
-
-    <video id="player" controls preload="metadata" playsinline></video>
-  </div>
-
-  <script>
-    const fileInput = document.getElementById('fileInput');
-    const dropzone = document.getElementById('dropzone');
-    const player = document.getElementById('player');
-    const info = document.getElementById('info');
-    const clearBtn = document.getElementById('clearBtn');
-    const downloadBtn = document.getElementById('downloadBtn');
-
-    let objectUrl = null;
-    let currentFile = null;
-
-    function humanSize(bytes) {
-      const units = ['B','KB','MB','GB','TB'];
-      let i = 0; let v = bytes;
-      while (v >= 1024 && i < units.length - 1) { v /= 1024; i++; }
-      return `${v.toFixed(v < 10 && i ? 2 : 0)} ${units[i]}`;
-    }
-
-    function setInfo(msg) {
-      info.textContent = msg;
-    }
-
-    function revokeUrl() {
-      if (objectUrl) {
-        URL.revokeObjectURL(objectUrl);
-        objectUrl = null;
-      }
-    }
-
-    function loadFile(file) {
-      if (!file) return;
-      if (!file.type.startsWith('video/')) {
-        setInfo('Il file selezionato non è un video.');
-        return;
-      }
-      revokeUrl();
-      objectUrl = URL.createObjectURL(file);
-      currentFile = file;
-
-      // Verifica supporto formato
-      const canPlay = player.canPlayType(file.type);
-      if (!canPlay) {
-        setInfo(`Formato non dichiarato supportato (${file.type}). Provo comunque a riprodurre…`);
-      } else {
-        setInfo(`Caricato: ${file.name} • ${file.type || 'tipo sconosciuto'} • ${humanSize(file.size)}`);
-      }
-
-      player.src = objectUrl;
-      player.load();
-      player.play().catch(() => { /* autoplay può essere bloccato: ok */ });
-
-      clearBtn.disabled = false;
-      downloadBtn.disabled = false;
-    }
-
-    // Input file
-    fileInput.addEventListener('change', (e) => {
-      const file = e.target.files?.[0];
-      loadFile(file);
-      // reset per permettere ricariche dello stesso file
-      fileInput.value = '';
-    });
-
-    // Drag & drop
-    ['dragenter','dragover'].forEach(evt =>
-      dropzone.addEventListener(evt, (e) => {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'copy';
-        dropzone.classList.add('drag');
-      })
-    );
-    ['dragleave','drop'].forEach(evt =>
-      dropzone.addEventListener(evt, (e) => {
-        e.preventDefault();
-        dropzone.classList.remove('drag');
-      })
-    );
-    dropzone.addEventListener('drop', (e) => {
-      const file = e.dataTransfer.files?.[0];
-      loadFile(file);
-    });
-
-    // Pulisci
-    clearBtn.addEventListener('click', () => {
-      player.pause();
-      player.removeAttribute('src');
-      player.load();
-      setInfo('Nessun video caricato.');
-      revokeUrl();
-      currentFile = null;
-      clearBtn.disabled = true;
-      downloadBtn.disabled = true;
-    });
-
-    // Scarica il file originale
-    downloadBtn.addEventListener('click', () => {
-      if (!currentFile) return;
-      const a = document.createElement('a');
-      const url = objectUrl || URL.createObjectURL(currentFile);
-      a.href = url;
-      a.download = currentFile.name || 'video';
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-    });
-
-    // Messaggio iniziale
-    setInfo('Nessun video caricato.');
-  </script>
+  <footer>
+    © 2025 - Sito dimostrativo con video locale
+  </footer>
 </body>
 </html>
